@@ -65,6 +65,40 @@
             border-radius: 20px; position: fixed; top: 20px; left: 50%;
             transform: translateX(-50%); font-size: 0.8rem; z-index: 1000;
         }
+
+        /* โหมดหาร: แท็บสลับ */
+        .mode-tabs {
+            display: flex; background: #f1f3f5; border-radius: 12px; padding: 4px;
+            margin-bottom: 18px; gap: 4px;
+        }
+        .mode-tab {
+            flex: 1; text-align: center; padding: 10px 6px; border-radius: 9px;
+            font-size: 0.85rem; font-weight: 500; color: #6c757d; cursor: pointer;
+            transition: 0.2s; border: none; background: transparent;
+        }
+        .mode-tab.active { background: white; color: #2b2d42; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+        .mode-panel { display: none; }
+        .mode-panel.active { display: block; }
+
+        /* โหมดแยกรายการ */
+        .person-row {
+            display: flex; gap: 8px; margin-bottom: 10px; align-items: center;
+        }
+        .person-row input.person-name { flex: 1.1; }
+        .person-row input.person-amount { flex: 1; }
+        .btn-remove-person {
+            background: #fff0f0; color: #d90429; border: none; border-radius: 8px;
+            width: 40px; height: 42px; flex-shrink: 0; font-size: 1.1rem; cursor: pointer;
+        }
+        .btn-add-person {
+            width: 100%; background: #eef0f4; color: #2b2d42; border: 1px dashed #adb5bd;
+            padding: 10px; border-radius: 10px; font-size: 0.85rem; font-weight: 500;
+            cursor: pointer; margin-bottom: 15px;
+        }
+        .shared-note {
+            font-size: 0.75rem; color: #8d99ae; margin-top: -8px; margin-bottom: 15px; line-height: 1.4;
+        }
     </style>
 </head>
 <body>
@@ -72,25 +106,52 @@
 <div class="container">
     <h2>💸 สรุปยอดหารค่าข้าว</h2>
 
-    <div class="form-group">
-        <label>ยอดเงินทั้งหมด (บาท)</label>
-        <input type="number" id="totalAmount" placeholder="เช่น 450" inputmode="decimal">
+    <div class="mode-tabs">
+        <button class="mode-tab active" id="tabEqual" onclick="switchMode('equal')">หารเท่ากันหมด</button>
+        <button class="mode-tab" id="tabCustom" onclick="switchMode('custom')">แยกยอดแต่ละคน</button>
     </div>
 
-    <div class="form-group">
-        <label>จำนวนคนหาร (คน)</label>
-        <input type="number" id="peopleCount" placeholder="เช่น 3" inputmode="numeric">
+    <!-- โหมดหารเท่ากัน -->
+    <div class="mode-panel active" id="panelEqual">
+        <div class="form-group">
+            <label>ยอดเงินทั้งหมด (บาท)</label>
+            <input type="number" id="totalAmount" placeholder="เช่น 450" inputmode="decimal">
+        </div>
+
+        <div class="form-group">
+            <label>จำนวนคนหาร (คน)</label>
+            <input type="number" id="peopleCount" placeholder="เช่น 3" inputmode="numeric">
+        </div>
+
+        <div class="form-group">
+            <label>เบอร์ PromptPay เจ้ามือ (จะจำไว้อัตโนมัติ)</label>
+            <input type="tel" id="promptpayNo" placeholder="เช่น 0812345678" inputmode="tel">
+        </div>
+
+        <button class="btn-calc" onclick="calculateEqual()">คำนวณและสรุปยอด</button>
     </div>
 
-    <div class="form-group">
-        <label>เบอร์ PromptPay เจ้ามือ (จะจำไว้อัตโนมัติ)</label>
-        <input type="tel" id="promptpayNo" placeholder="เช่น 0812345678" inputmode="tel">
-    </div>
+    <!-- โหมดแยกยอดแต่ละคน -->
+    <div class="mode-panel" id="panelCustom">
+        <div class="form-group">
+            <label>ค่าใช้จ่ายร่วม เช่น ค่าส่ง/service charge (บาท, หารเท่ากันทุกคน)</label>
+            <input type="number" id="sharedAmount" placeholder="ถ้าไม่มีเว้นว่างได้" inputmode="decimal">
+        </div>
 
-    <button class="btn-calc" onclick="calculateSplit()">คำนวณและสรุปยอด</button>
+        <label style="font-size:0.85rem; color:#6c757d; font-weight:500; display:block; margin-bottom:8px;">รายชื่อและยอดของแต่ละคน (บาท)</label>
+        <div id="personList"></div>
+        <button class="btn-add-person" onclick="addPersonRow()">➕ เพิ่มคน</button>
+
+        <div class="form-group">
+            <label>เบอร์ PromptPay เจ้ามือ (จะจำไว้อัตโนมัติ)</label>
+            <input type="tel" id="promptpayNoCustom" placeholder="เช่น 0812345678" inputmode="tel">
+        </div>
+
+        <button class="btn-calc" onclick="calculateCustom()">คำนวณและสรุปยอด</button>
+    </div>
 
     <div id="resultBox" class="result-box">
-        <div class="result-title">ตกคนละ</div>
+        <div class="result-title" id="resultTitle">ตกคนละ</div>
         <div id="perPersonAmount" class="result-amount">0 บาท</div>
 
         <div id="funnyNote" class="funny-note"></div>
@@ -101,10 +162,11 @@
         <div class="donate-card">
             <div class="donate-title">☕ ชอบความสะดวกแบบนี้ไหมครับ?</div>
             <div class="donate-desc">
-                เว็บนี้ทำขึ้นมาให้ทุกคนใช้หารค่าข้าวฟรีๆ ไร้โฆษณากวนใจ หากเครื่องมือนี้ช่วยเซฟเวลาของคุณ ฝากสนับสนุนค่ากาแฟผู้พัฒนาได้นะครับ ✨
+                เว็บนี้ทำขึ้นมาให้ทุกคนใช้หารค่าข้าวฟรีๆ ไร้โฆษณากวนใจ หากเครื่องมือนี้ช่วยเซฟเวลาของคุณ ฝากสนับสนุนค่ากาแฟผู้พัฒนาได้นะครับ ✨<br>
+                มีติชมหรืออยากให้เพิ่มฟีเจอร์ไหน ฝากข้อความไว้ตอนเลี้ยงกาแฟได้เลยนะครับ 💬
             </div>
-            <a href="https://www.buymeacoffee.com/ใส่ชื่อของคุณที่นี่" target="_blank" class="btn-coffee">
-                ☕ เลี้ยงกาแฟ 1 แก้ว
+            <a href="https://buymeacoffee.com/devricebowl" target="_blank" class="btn-coffee">
+                ☕ เลี้ยงกาแฟ / ฝากข้อความ
             </a>
         </div>
     </div>
@@ -118,15 +180,65 @@
             const saved = await window.storage.get('myPromptPay');
             if (saved) {
                 document.getElementById('promptpayNo').value = saved.value;
+                document.getElementById('promptpayNoCustom').value = saved.value;
             }
         } catch (e) {
             // ยังไม่เคยบันทึกไว้ ไม่ต้องทำอะไร
         }
+        // เริ่มต้นด้วย 2 แถวคนในโหมดแยกยอด
+        addPersonRow();
+        addPersonRow();
     });
 
     let textToCopy = "";
+    let personRowCount = 0;
 
-    async function calculateSplit() {
+    function switchMode(mode) {
+        document.getElementById('tabEqual').classList.toggle('active', mode === 'equal');
+        document.getElementById('tabCustom').classList.toggle('active', mode === 'custom');
+        document.getElementById('panelEqual').classList.toggle('active', mode === 'equal');
+        document.getElementById('panelCustom').classList.toggle('active', mode === 'custom');
+        document.getElementById('resultBox').style.display = 'none';
+    }
+
+    function addPersonRow() {
+        personRowCount++;
+        const list = document.getElementById('personList');
+        const row = document.createElement('div');
+        row.className = 'person-row';
+        row.innerHTML = `
+            <input type="text" class="person-name" placeholder="ชื่อคนที่ ${personRowCount}">
+            <input type="number" class="person-amount" placeholder="ยอด (บาท)" inputmode="decimal">
+            <button class="btn-remove-person" onclick="this.parentElement.remove()">✕</button>
+        `;
+        list.appendChild(row);
+    }
+
+    async function savePromptPay(value) {
+        if (!value) return;
+        try {
+            await window.storage.set('myPromptPay', value);
+        } catch (e) {
+            console.error('บันทึกเบอร์ PromptPay ไม่สำเร็จ', e);
+        }
+    }
+
+    function showFunnyNote(count, perPersonMin) {
+        const funnyNoteEl = document.getElementById('funnyNote');
+        funnyNoteEl.style.display = 'none';
+        if (count >= 15) {
+            funnyNoteEl.innerText = "🗣️ หารกันเยอะขนาดนี้ ยกมาทั้งหมู่บ้านเลยป่ะเนี่ย!";
+            funnyNoteEl.style.display = 'block';
+        } else if (perPersonMin <= 5) {
+            funnyNoteEl.innerText = "💸 ยอดแค่นี้... เจ้ามือใจดีเลี้ยงเพื่อนเหอะ!";
+            funnyNoteEl.style.display = 'block';
+        } else if (count === 1) {
+            funnyNoteEl.innerText = "🥺 กินคนเดียวแล้วกดหารทำไมเนี่ย...";
+            funnyNoteEl.style.display = 'block';
+        }
+    }
+
+    async function calculateEqual() {
         const total = parseFloat(document.getElementById('totalAmount').value);
         const count = parseInt(document.getElementById('peopleCount').value);
         const pp = document.getElementById('promptpayNo').value.trim();
@@ -136,34 +248,61 @@
             return;
         }
 
-        if (pp) {
-            try {
-                await window.storage.set('myPromptPay', pp);
-            } catch (e) {
-                console.error('บันทึกเบอร์ PromptPay ไม่สำเร็จ', e);
-            }
-        }
+        await savePromptPay(pp);
 
         const perPerson = (total / count).toFixed(2);
-
-        const funnyNoteEl = document.getElementById('funnyNote');
-        funnyNoteEl.style.display = 'none';
-
-        if (count >= 15) {
-            funnyNoteEl.innerText = "🗣️ หารกันเยอะขนาดนี้ ยกมาทั้งหมู่บ้านเลยป่ะเนี่ย!";
-            funnyNoteEl.style.display = 'block';
-        } else if (perPerson <= 5) {
-            funnyNoteEl.innerText = "💸 ยอดแค่นี้... เจ้ามือใจดีเลี้ยงเพื่อนเหอะ!";
-            funnyNoteEl.style.display = 'block';
-        } else if (count === 1) {
-            funnyNoteEl.innerText = "🥺 กินคนเดียวแล้วกดหารทำไมเนี่ย...";
-            funnyNoteEl.style.display = 'block';
-        }
+        showFunnyNote(count, perPerson);
 
         let ppText = pp ? `\nโอนเข้า PromptPay: ${pp}` : '';
         textToCopy = `ยอดรวม ${total} บาท (${count} คน)\nตกคนละ 👉 ${perPerson} บาท${ppText}`;
 
+        document.getElementById('resultTitle').innerText = 'ตกคนละ';
         document.getElementById('perPersonAmount').innerText = `${perPerson} บาท`;
+        document.getElementById('summaryText').innerText = textToCopy;
+        document.getElementById('resultBox').style.display = 'block';
+    }
+
+    async function calculateCustom() {
+        const shared = parseFloat(document.getElementById('sharedAmount').value) || 0;
+        const pp = document.getElementById('promptpayNoCustom').value.trim();
+
+        const rows = document.querySelectorAll('#personList .person-row');
+        const people = [];
+        rows.forEach(row => {
+            const name = row.querySelector('.person-name').value.trim();
+            const amount = parseFloat(row.querySelector('.person-amount').value);
+            if (!isNaN(amount) && amount > 0) {
+                people.push({ name: name || 'ไม่ระบุชื่อ', amount });
+            }
+        });
+
+        if (people.length === 0) {
+            alert('กรุณาใส่ยอดของอย่างน้อย 1 คนครับ');
+            return;
+        }
+
+        await savePromptPay(pp);
+
+        const sharedPerPerson = shared / people.length;
+        let grandTotal = shared;
+        let lines = [];
+        let minPerPerson = Infinity;
+
+        people.forEach(p => {
+            const personTotal = p.amount + sharedPerPerson;
+            grandTotal += p.amount;
+            minPerPerson = Math.min(minPerPerson, personTotal);
+            lines.push(`${p.name}: ${personTotal.toFixed(2)} บาท`);
+        });
+
+        showFunnyNote(people.length, minPerPerson);
+
+        let ppText = pp ? `\nโอนเข้า PromptPay: ${pp}` : '';
+        const sharedText = shared > 0 ? `\n(รวมค่าใช้จ่ายร่วม ${shared} บาท หารคนละ ${sharedPerPerson.toFixed(2)} บาท)` : '';
+        textToCopy = `ยอดรวมทั้งหมด ${grandTotal.toFixed(2)} บาท (${people.length} คน)${sharedText}\n\n${lines.join('\n')}${ppText}`;
+
+        document.getElementById('resultTitle').innerText = 'ยอดรวมทั้งหมด';
+        document.getElementById('perPersonAmount').innerText = `${grandTotal.toFixed(2)} บาท`;
         document.getElementById('summaryText').innerText = textToCopy;
         document.getElementById('resultBox').style.display = 'block';
     }
