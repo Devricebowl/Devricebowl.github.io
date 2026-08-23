@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>หารค่าข้าว มินิมอล 💸</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        * { box-sizing: border-box; font-family: 'Prompt', sans-serif; }
+        body { background-color: #f8f9fa; color: #212529; padding: 20px 15px; margin: 0; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 400px; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+
+        h2 { text-align: center; color: #2b2d42; margin-top: 0; font-size: 1.4rem; }
+        .form-group { margin-bottom: 15px; text-align: left; }
+        label { font-size: 0.85rem; color: #6c757d; font-weight: 500; display: block; margin-bottom: 5px; }
+
+        input {
+            width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 10px;
+            font-size: 1rem; outline: none; transition: 0.2s;
+        }
+        input:focus { border-color: #4a4e69; box-shadow: 0 0 0 3px rgba(74, 78, 105, 0.1); }
+
+        .btn-calc {
+            width: 100%; background: #2b2d42; color: white; border: none; padding: 12px;
+            border-radius: 10px; font-size: 1rem; font-weight: 500; cursor: pointer; margin-top: 10px;
+        }
+        .btn-calc:active { transform: scale(0.98); }
+
+        .result-box {
+            display: none; margin-top: 20px; padding: 15px; background: #f1f3f5;
+            border-radius: 12px; text-align: left; position: relative;
+        }
+        .result-title { font-size: 0.8rem; color: #8d99ae; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
+        .result-amount { font-size: 1.6rem; color: #d90429; font-weight: 600; margin-bottom: 5px; }
+        .result-details { font-size: 0.85rem; color: #495057; line-height: 1.5; white-space: pre-line; }
+
+        .funny-note {
+            display: none; background: #fff3cd; color: #856404; border: 1px solid #ffeeba;
+            padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 10px; font-weight: 500;
+        }
+
+        .btn-copy {
+            width: 100%; background: #38b000; color: white; border: none; padding: 10px;
+            border-radius: 8px; font-size: 0.9rem; margin-top: 12px; cursor: pointer; font-weight: 500;
+        }
+
+        .donate-card {
+            margin-top: 25px; padding: 15px; background: #fff8f0; border: 1px dashed #e0a96d;
+            border-radius: 12px; text-align: center;
+        }
+        .donate-title { font-size: 0.9rem; font-weight: 600; color: #8b5e3c; margin-bottom: 4px; }
+        .donate-desc { font-size: 0.8rem; color: #6c757d; line-height: 1.4; margin-bottom: 10px; }
+        .btn-coffee {
+            display: inline-block; background: #ff813f; color: white; text-decoration: none;
+            padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 500;
+            box-shadow: 0 2px 6px rgba(255, 129, 63, 0.3); transition: 0.2s;
+        }
+        .btn-coffee:active { transform: scale(0.95); }
+
+        .toast {
+            display: none; background: #212529; color: white; padding: 8px 16px;
+            border-radius: 20px; position: fixed; top: 20px; left: 50%;
+            transform: translateX(-50%); font-size: 0.8rem; z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>💸 สรุปยอดหารค่าข้าว</h2>
+
+    <div class="form-group">
+        <label>ยอดเงินทั้งหมด (บาท)</label>
+        <input type="number" id="totalAmount" placeholder="เช่น 450" inputmode="decimal">
+    </div>
+
+    <div class="form-group">
+        <label>จำนวนคนหาร (คน)</label>
+        <input type="number" id="peopleCount" placeholder="เช่น 3" inputmode="numeric">
+    </div>
+
+    <div class="form-group">
+        <label>เบอร์ PromptPay เจ้ามือ (จะจำไว้อัตโนมัติ)</label>
+        <input type="tel" id="promptpayNo" placeholder="เช่น 0812345678" inputmode="tel">
+    </div>
+
+    <button class="btn-calc" onclick="calculateSplit()">คำนวณและสรุปยอด</button>
+
+    <div id="resultBox" class="result-box">
+        <div class="result-title">ตกคนละ</div>
+        <div id="perPersonAmount" class="result-amount">0 บาท</div>
+
+        <div id="funnyNote" class="funny-note"></div>
+
+        <div id="summaryText" class="result-details"></div>
+        <button class="btn-copy" onclick="copySummary()">📋 ก๊อปปี้ข้อความไปส่งในแชตกลุ่ม</button>
+
+        <div class="donate-card">
+            <div class="donate-title">☕ ชอบความสะดวกแบบนี้ไหมครับ?</div>
+            <div class="donate-desc">
+                เว็บนี้ทำขึ้นมาให้ทุกคนใช้หารค่าข้าวฟรีๆ ไร้โฆษณากวนใจ หากเครื่องมือนี้ช่วยเซฟเวลาของคุณ ฝากสนับสนุนค่ากาแฟผู้พัฒนาได้นะครับ ✨
+            </div>
+            <a href="https://buymeacoffee.com/devricebowl" target="_blank" class="btn-coffee">
+                ☕ เลี้ยงกาแฟ 1 แก้ว
+            </a>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast">คัดลอกข้อความสรุปแล้ว! ✨</div>
+
+<script>
+    window.addEventListener('load', async function() {
+        try {
+            const saved = await window.storage.get('myPromptPay');
+            if (saved) {
+                document.getElementById('promptpayNo').value = saved.value;
+            }
+        } catch (e) {
+            // ยังไม่เคยบันทึกไว้ ไม่ต้องทำอะไร
+        }
+    });
+
+    let textToCopy = "";
+
+    async function calculateSplit() {
+        const total = parseFloat(document.getElementById('totalAmount').value);
+        const count = parseInt(document.getElementById('peopleCount').value);
+        const pp = document.getElementById('promptpayNo').value.trim();
+
+        if (!total || !count || count <= 0) {
+            alert('กรุณากรอกยอดเงินและจำนวนคนให้ถูกต้องครับ');
+            return;
+        }
+
+        if (pp) {
+            try {
+                await window.storage.set('myPromptPay', pp);
+            } catch (e) {
+                console.error('บันทึกเบอร์ PromptPay ไม่สำเร็จ', e);
+            }
+        }
+
+        const perPerson = (total / count).toFixed(2);
+
+        const funnyNoteEl = document.getElementById('funnyNote');
+        funnyNoteEl.style.display = 'none';
+
+        if (count >= 15) {
+            funnyNoteEl.innerText = "🗣️ หารกันเยอะขนาดนี้ ยกมาทั้งหมู่บ้านเลยป่ะเนี่ย!";
+            funnyNoteEl.style.display = 'block';
+        } else if (perPerson <= 5) {
+            funnyNoteEl.innerText = "💸 ยอดแค่นี้... เจ้ามือใจดีเลี้ยงเพื่อนเหอะ!";
+            funnyNoteEl.style.display = 'block';
+        } else if (count === 1) {
+            funnyNoteEl.innerText = "🥺 กินคนเดียวแล้วกดหารทำไมเนี่ย...";
+            funnyNoteEl.style.display = 'block';
+        }
+
+        let ppText = pp ? `\nโอนเข้า PromptPay: ${pp}` : '';
+        textToCopy = `ยอดรวม ${total} บาท (${count} คน)\nตกคนละ 👉 ${perPerson} บาท${ppText}`;
+
+        document.getElementById('perPersonAmount').innerText = `${perPerson} บาท`;
+        document.getElementById('summaryText').innerText = textToCopy;
+        document.getElementById('resultBox').style.display = 'block';
+    }
+
+    function copySummary() {
+        navigator.clipboard.writeText(textToCopy);
+        let toast = document.getElementById("toast");
+        toast.style.display = "block";
+        setTimeout(() => { toast.style.display = "none"; }, 1500);
+    }
+</script>
+
+</body>
+</html>
